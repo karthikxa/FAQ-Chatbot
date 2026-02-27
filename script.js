@@ -77,44 +77,56 @@ function removeTypingIndicator() {
 async function getBotResponse(userMessage) {
     showTypingIndicator();
 
-    try {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                contents: [
-                    {
-                        role: 'user',
-                        parts: [
-                            { text: "System prompt: You are a helpful FAQ assistant for a premium website. Keep your answers concise and friendly. Answer this: " + userMessage }
-                        ]
-                    }
-                ]
-            })
-        });
+    // Model fallback chain: Try most powerful/fastest first
+    const models = [
+        'gemini-1.5-flash',
+        'gemini-1.5-flash-8b',
+        'gemini-1.0-pro'
+    ];
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error?.message || 'Failed to connect to Gemini API');
+    const requestBody = {
+        contents: [{
+            role: 'user',
+            parts: [{ text: "System prompt: You are a helpful FAQ assistant for a premium website. Keep your answers concise and friendly. Answer this: " + userMessage }]
+        }]
+    };
+
+    let lastError = null;
+
+    for (const modelName of models) {
+        try {
+            console.log(`Attempting Gemini model: ${modelName}`);
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                removeTypingIndicator();
+
+                if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts[0]) {
+                    const botResponse = data.candidates[0].content.parts[0].text;
+                    addMessage(botResponse, 'bot');
+                    return; // Success!
+                }
+            } else {
+                const errorData = await response.json();
+                lastError = errorData.error?.message || response.statusText;
+                console.warn(`Model ${modelName} failed: ${lastError}`);
+            }
+        } catch (e) {
+            lastError = e.message;
+            console.error(`Fetch error for ${modelName}:`, e);
         }
-
-        const data = await response.json();
-        removeTypingIndicator();
-
-        if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts[0]) {
-            const botResponse = data.candidates[0].content.parts[0].text;
-            addMessage(botResponse, 'bot');
-        } else {
-            throw new Error("Invalid response format from Gemini");
-        }
-
-    } catch (error) {
-        console.error('Chatbot API Error:', error);
-        removeTypingIndicator();
-        addMessage("⚠️ **Error**: " + error.message + ". \n\n**Troubleshooting:**\n1. Ensure your Google API Key is valid.\n2. Check if the Gemini API is enabled in your Google Cloud Console.", 'bot');
     }
+
+    // If we get here, all models failed
+    removeTypingIndicator();
+    addMessage(`⚠️ **Error**: None of the available Gemini models could be reached. \n\n**Last Error:** ${lastError}\n\n**Troubleshooting:**\n1. Ensure your Gemini API Key is valid.\n2. Go to [Google AI Studio](https://aistudio.google.com/) and check if your key has access to these models.`, 'bot');
 }
 
 function saveChatHistory() {
