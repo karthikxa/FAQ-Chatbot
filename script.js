@@ -4,9 +4,9 @@ const userInput = document.getElementById('user-input');
 const clearBtn = document.getElementById('clear-chat');
 
 // Config
-const OPENROUTER_API_KEY = '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';
-const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const MODEL = 'openai/gpt-3.5-turbo'; // You can change this to any OpenRouter supported model
+const GEMINI_API_KEY = 'AIzaSyAhHhPF82ZlT834O4HjM8YHB2TW8LHsm-w';
+// Using Gemini 1.5 Flash - fast and cost-effective
+const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 let isTyping = false;
 
@@ -79,46 +79,39 @@ async function getBotResponse(userMessage) {
         const response = await fetch(API_URL, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-                // Using a standard URL as Referer often fixes authentication issues for local file execution
-                'HTTP-Referer': 'https://github.com/karthikxa/FAQ-Chatbot',
-                'X-Title': 'Premium FAQ Chatbot',
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: MODEL,
-                messages: [
-                    { role: 'system', content: 'You are a helpful FAQ assistant for a premium website. Keep your answers concise and friendly.' },
-                    { role: 'user', content: userMessage }
+                contents: [
+                    {
+                        role: 'user',
+                        parts: [
+                            { text: "System prompt: You are a helpful FAQ assistant for a premium website. Keep your answers concise and friendly. Answer this: " + userMessage }
+                        ]
+                    }
                 ]
             })
         });
 
         if (!response.ok) {
             const errorData = await response.json();
-            const errorMessage = errorData.error?.message || 'Failed to fetch from OpenRouter';
-
-            // Specifically handling "User not found" which is common for invalid/unauthenticated keys
-            if (errorMessage.includes("User not found")) {
-                throw new Error("API Key Authentication Failed (User not found). Please verify your key on OpenRouter.ai");
-            }
-            throw new Error(errorMessage);
+            throw new Error(errorData.error?.message || 'Failed to connect to Gemini API');
         }
 
         const data = await response.json();
         removeTypingIndicator();
 
-        if (data.choices && data.choices[0]) {
-            const botResponse = data.choices[0].message.content;
+        if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts[0]) {
+            const botResponse = data.candidates[0].content.parts[0].text;
             addMessage(botResponse, 'bot');
         } else {
-            throw new Error("Invalid response format from API");
+            throw new Error("Invalid response format from Gemini");
         }
 
     } catch (error) {
         console.error('Chatbot API Error:', error);
         removeTypingIndicator();
-        addMessage("⚠️ **Error**: " + error.message + ". \n\n**Troubleshooting:**\n1. Check if your API key has credits.\n2. Ensure the key is copied correctly.\n3. Try a free model like `google/gemini-2.0-flash-lite-preview-02-05:free`.", 'bot');
+        addMessage("⚠️ **Error**: " + error.message + ". \n\n**Troubleshooting:**\n1. Ensure your Google API Key is valid.\n2. Check if the Gemini API is enabled in your Google Cloud Console.", 'bot');
     }
 }
 
