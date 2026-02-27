@@ -5,8 +5,10 @@ const clearBtn = document.getElementById('clear-chat');
 
 // Config
 const GEMINI_API_KEY = 'AIzaSyAhHhPF82ZlT834O4HjM8YHB2TW8LHsm-w';
-// Using Gemini 1.5 Flash - fast and cost-effective
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+// Using v1 endpoint for better compatibility
+const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+// Fallback model if Flash fails
+const FALLBACK_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
 
 let isTyping = false;
 
