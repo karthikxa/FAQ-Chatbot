@@ -4,7 +4,7 @@ const userInput = document.getElementById('user-input');
 const clearBtn = document.getElementById('clear-chat');
 
 // Config
-const OPENROUTER_API_KEY = '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';
+const OPENROUTER_API_KEY = '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';
 const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const MODEL = 'openai/gpt-3.5-turbo'; // You can change this to any OpenRouter supported model
 
