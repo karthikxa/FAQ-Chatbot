@@ -80,8 +80,9 @@ async function getBotResponse(userMessage) {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-                'HTTP-Referer': window.location.href, // Required by OpenRouter
-                'X-Title': 'Premium FAQ Chatbot', // Optional but good practice
+                // Using a standard URL as Referer often fixes authentication issues for local file execution
+                'HTTP-Referer': 'https://github.com/karthikxa/FAQ-Chatbot',
+                'X-Title': 'Premium FAQ Chatbot',
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -95,19 +96,29 @@ async function getBotResponse(userMessage) {
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.error?.message || 'Failed to fetch from OpenRouter');
+            const errorMessage = errorData.error?.message || 'Failed to fetch from OpenRouter';
+
+            // Specifically handling "User not found" which is common for invalid/unauthenticated keys
+            if (errorMessage.includes("User not found")) {
+                throw new Error("API Key Authentication Failed (User not found). Please verify your key on OpenRouter.ai");
+            }
+            throw new Error(errorMessage);
         }
 
         const data = await response.json();
         removeTypingIndicator();
 
-        const botResponse = data.choices[0].message.content;
-        addMessage(botResponse, 'bot');
+        if (data.choices && data.choices[0]) {
+            const botResponse = data.choices[0].message.content;
+            addMessage(botResponse, 'bot');
+        } else {
+            throw new Error("Invalid response format from API");
+        }
 
     } catch (error) {
         console.error('Chatbot API Error:', error);
         removeTypingIndicator();
-        addMessage("⚠️ **Error**: " + error.message + ". Please check your OpenRouter credits or API key status.", 'bot');
+        addMessage("⚠️ **Error**: " + error.message + ". \n\n**Troubleshooting:**\n1. Check if your API key has credits.\n2. Ensure the key is copied correctly.\n3. Try a free model like `google/gemini-2.0-flash-lite-preview-02-05:free`.", 'bot');
     }
 }
 
